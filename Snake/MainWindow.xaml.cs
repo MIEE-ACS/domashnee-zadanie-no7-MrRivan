@@ -95,6 +95,7 @@ namespace Snake
                     //мы проиграли
                     moveTimer.Stop();
                     tbGameOver.Visibility = Visibility.Visible;
+                    button2.Visibility = Visibility.Visible;
                     return;
                 }
             }
@@ -105,6 +106,7 @@ namespace Snake
                 //мы проиграли
                 moveTimer.Stop();
                 tbGameOver.Visibility = Visibility.Visible;
+                button2.Visibility = Visibility.Visible;
                 return;
             }
             //проверяем, что голова врезалась в ядовитое яблоко
@@ -173,8 +175,9 @@ namespace Snake
         }
 
         // Обработчик нажатия кнопки "Start"
-        private void button1_Click(object sender, RoutedEventArgs e)
+        private void button1_Click(object sender, MouseButtonEventArgs e)
         {
+            button2.Visibility = Visibility.Hidden;
             // обнуляем счет
             score = 0;
             // обнуляем змею
@@ -189,18 +192,17 @@ namespace Snake
             apple = new Apple(snake);
             canvas1.Children.Add(apple.image);
             // создаем новое ядовитое яблоко
-            damage_apple = new Damage_Apple(snake,apple);
+            damage_apple = new Damage_Apple(snake, apple);
             // создаем голову
             head = new Head();
             snake.Add(head);
             canvas1.Children.Add(head.image);
-            
+
             //запускаем таймер
             moveTimer.Start();
             UpdateField();
 
         }
-        
         public class Entity
         {
             protected int m_width;
@@ -395,5 +397,7 @@ namespace Snake
                 y = m_next.y;
             }
         }
+
+       
     }
 }
