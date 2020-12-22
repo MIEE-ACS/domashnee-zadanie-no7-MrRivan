@@ -28,11 +28,14 @@ namespace Snake
         List<PositionedEntity> snake;
         // яблоко
         Apple apple;
+        //ядовитое яблоко 
+        Damage_Apple damage_apple;
         //количество очков
         int score;
         //таймер по которому 
         DispatcherTimer moveTimer;
-        
+        // переменная отвечает за появление отравленого яблока
+        bool beacon = false;
         //конструктор формы, выполняется при запуске программы
         public MainWindow()
         {
@@ -48,7 +51,7 @@ namespace Snake
             moveTimer.Tick += new EventHandler(moveTimer_Tick);
             
         }
-
+        Random random = new Random();
         //метод перерисовывающий экран
         private void UpdateField()
         {
@@ -58,11 +61,18 @@ namespace Snake
                 Canvas.SetTop(p.image, p.y);
                 Canvas.SetLeft(p.image, p.x);
             }
-
+            
             //обновляем положение яблока
             Canvas.SetTop(apple.image, apple.y);
             Canvas.SetLeft(apple.image, apple.x);
-            
+
+            //обновляем положение ядовитого яблока с какой-то вероятностью
+            if (beacon)
+            {
+                Canvas.SetTop(damage_apple.image, damage_apple.y);
+                Canvas.SetLeft(damage_apple.image, damage_apple.x);
+                beacon = false;
+            }
             //обновляем количество очков
             lblScore.Content = String.Format("{0}000", score);
         }
@@ -85,6 +95,7 @@ namespace Snake
                     //мы проиграли
                     moveTimer.Stop();
                     tbGameOver.Visibility = Visibility.Visible;
+                    button2.Visibility = Visibility.Visible;
                     return;
                 }
             }
@@ -95,16 +106,45 @@ namespace Snake
                 //мы проиграли
                 moveTimer.Stop();
                 tbGameOver.Visibility = Visibility.Visible;
+                button2.Visibility = Visibility.Visible;
                 return;
             }
-
+            //проверяем, что голова врезалась в ядовитое яблоко
+            if (head.x == damage_apple.x && head.y == damage_apple.y)
+            {
+                beacon = false;
+                //отрыв последнего элемента змейки
+               canvas1.Children.Remove(snake.Last().image);
+                snake.RemoveAt(snake.Count-1);
+                //понижение счета 
+                score -= 5;
+            }
+            //обработка исчезновения отравленного яблока и уборка его с поля  
+            if (head.x==damage_apple.x && head.y==damage_apple.y || head.x == apple.x && head.y == apple.y)
+            {
+                canvas1.Children.Remove(damage_apple.image);
+                damage_apple.x = 0;
+                damage_apple.y = 0;
+            }
+            
             //проверяем, что голова змеи врезалась в яблоко
             if (head.x == apple.x && head.y == apple.y)
             {
+
                 //увеличиваем счет
                 score++;
+               // создаем и передвигаем ядовитое яблоко с вероятностью 0,05
+                int chect = random.Next(1, 100);
+                if (chect==16||chect==69||chect==77||chect==45||chect==29)
+                {
+                    beacon = true;
+                    damage_apple.move();
+                    canvas1.Children.Add(damage_apple.image);
+                }
                 //двигаем яблоко на новое место
                 apple.move();
+               
+                
                 // добавляем новый сегмент к змее
                 var part = new BodyPart(snake.Last());
                 canvas1.Children.Add(part.image);
@@ -135,8 +175,9 @@ namespace Snake
         }
 
         // Обработчик нажатия кнопки "Start"
-        private void button1_Click(object sender, RoutedEventArgs e)
+        private void button1_Click(object sender, MouseButtonEventArgs e)
         {
+            button2.Visibility = Visibility.Hidden;
             // обнуляем счет
             score = 0;
             // обнуляем змею
@@ -145,23 +186,23 @@ namespace Snake
             canvas1.Children.Clear();
             // скрываем надпись "Game Over"
             tbGameOver.Visibility = Visibility.Hidden;
-            
             // добавляем поле на канвас
             canvas1.Children.Add(field.image);
             // создаем новое яблоко и добавлем его
             apple = new Apple(snake);
             canvas1.Children.Add(apple.image);
+            // создаем новое ядовитое яблоко
+            damage_apple = new Damage_Apple(snake, apple);
             // создаем голову
             head = new Head();
             snake.Add(head);
             canvas1.Children.Add(head.image);
-            
+
             //запускаем таймер
             moveTimer.Start();
             UpdateField();
 
         }
-        
         public class Entity
         {
             protected int m_width;
@@ -225,7 +266,44 @@ namespace Snake
                 }
             }
         }
+        //выносим рандом для правельной работы 
+        static Random rand = new Random();
+        // создаем класс ядовитого яблока 
+        public class Damage_Apple: PositionedEntity
+        {
+            List<PositionedEntity> m_snake;
+            int apple_x;
+            int apple_y;
+            public Damage_Apple(List<PositionedEntity> s, Apple ap)
+                : base(0, 0, 40, 40, "pack://application:,,,/Resources/fruit.png")
+            {
+                apple_x = ap.x;
+                apple_y = ap.y;
+                m_snake = s;
+                move();
+               
+            }
+            public override void move()
+            {
+                do
+                {
+                    x = rand.Next(13) * 40 + 40;
+                    y = rand.Next(13) * 40 + 40;
+                    bool overlap = false;
+                    foreach (var p in m_snake)
+                    {
+                        if (p.x == x && p.y == y || x == apple_x && y == apple_y)
+                        {
+                            overlap = true;
+                            break;
+                        }
+                    }
+                    if (!overlap)
+                        break;
+                } while (true);
 
+            }
+        }
         public class Apple : PositionedEntity
         {
             List<PositionedEntity> m_snake;
@@ -238,7 +316,7 @@ namespace Snake
 
             public override void move()
             {
-                Random rand = new Random();
+                
                 do
                 {
                     x = rand.Next(13) * 40 + 40;
@@ -312,12 +390,14 @@ namespace Snake
             {
                 m_next = next;
             }
-
+           
             public override void move()
             {
                 x = m_next.x;
                 y = m_next.y;
             }
         }
+
+       
     }
 }
